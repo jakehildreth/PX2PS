@@ -53,5 +53,5 @@ foreach ($function in $publicFunctions) {
     }
 }
 
-# Export public functions
-Export-ModuleMember -Function $publicFunctions.BaseName
+# Export public functions and their aliases
+Export-ModuleMember -Function ($publicFunctions | ForEach-Object { $_.BaseName }) -Alias *

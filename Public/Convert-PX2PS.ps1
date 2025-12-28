@@ -1,4 +1,5 @@
-function ConvertFrom-PxFile {
+function Convert-PX2PS {
+    [alias('px2ps')] 
     <#
     .SYNOPSIS
         Converts Pixquare .px files to terminal pixel graphics.

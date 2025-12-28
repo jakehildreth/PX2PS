@@ -7,10 +7,10 @@
     Copyright = '(c) 2025 Jake Hildreth. All rights reserved.'
     Description = 'Converts Pixquare .px files to terminal pixel graphics using ANSI True Color'
     PowerShellVersion = '5.1'
-    FunctionsToExport = @('ConvertFrom-PxFile')
+    FunctionsToExport = @('Convert-PX2PS')
     CmdletsToExport = @()
     VariablesToExport = @()
-    AliasesToExport = @()
+    AliasesToExport = @('px2ps')
     PrivateData = @{
         PSData = @{
             Tags = @('PixelArt', 'Terminal', 'ANSI', 'Graphics', 'Pixquare')
