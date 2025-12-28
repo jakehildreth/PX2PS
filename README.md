@@ -18,13 +18,18 @@ Import-Module ./PX2PS/PX2PS.psd1
 
 ```powershell
 # Convert a single .px file
-ConvertFrom-PxFile -Path "image.px"
+Convert-PX2PS -Path "image.px"
 
-# Convert all .px files in a directory
-ConvertFrom-PxFile -Path "C:\PixelArt"
+# Convert all .px files in a directory using alias
+px2ps -Path "C:\PixelArt"
 
 # Pipeline support
-Get-ChildItem -Path . -Filter "*.px" | ConvertFrom-PxFile
+Get-ChildItem -Path . -Filter "*.px" | Convert-PX2PS
+
+# -PassThru to get pixel data without rendering
+$imageData = px2ps -Path "image.px" -PassThru
+Write-Host "Dimensions: $($imageData.Width)x$($imageData.Height)"
+
 ```
 
 ## Features
@@ -40,42 +45,6 @@ Get-ChildItem -Path . -Filter "*.px" | ConvertFrom-PxFile
 
 - PowerShell 5.1 or later
 - Terminal with True Color (24-bit color) support
-
-## Examples
-
-### Basic Usage
-
-```powershell
-# Display a pixel art file
-ConvertFrom-PxFile -Path "Stepper 4.px"
-```
-
-### Working with Directories
-
-```powershell
-# Process all .px files in the current directory
-ConvertFrom-PxFile -Path .
-
-# Process files from a specific folder
-ConvertFrom-PxFile -Path "C:\Users\Jake\Pictures\PixelArt"
-```
-
-### Pipeline Operations
-
-```powershell
-# Filter and display specific files
-Get-ChildItem -Recurse -Filter "*.px" | 
-    Where-Object { $_.Name -like "*logo*" } | 
-    ConvertFrom-PxFile
-```
-
-### Using PassThru
-
-```powershell
-# Get pixel data without rendering
-$imageData = ConvertFrom-PxFile -Path "image.px" -PassThru
-Write-Host "Dimensions: $($imageData.Width)x$($imageData.Height)"
-```
 
 ## How It Works
 
