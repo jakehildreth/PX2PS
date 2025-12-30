@@ -17,27 +17,55 @@ function Convert-PX2PS {
         Path to a .px file or directory containing .px files.
         If a directory is provided, all .px files in that directory are processed.
     
+    .PARAMETER OutputMode
+        Controls the output format:
+        - Display: Renders directly to terminal (default)
+        - ScriptBlock: Returns a scriptblock that can be invoked to render
+        - Script: Generates a standalone .ps1 file (requires -OutputPath)
+    
+    .PARAMETER OutputPath
+        File path for generated script when using -OutputMode Script.
+        Must end with .ps1 extension.
+    
     .PARAMETER PassThru
         If specified, returns PSCustomObject with file information instead of
-        rendering directly to terminal.
+        rendering directly to terminal. Maintained for backward compatibility.
     
     .EXAMPLE
-        ConvertFrom-PxFile -Path "Stepper 4.px"
+        Convert-PX2PS -Path "Stepper 4.px"
         
         Renders the specified .px file to the terminal.
     
     .EXAMPLE
-        ConvertFrom-PxFile -Path "C:\PixelArt"
+        Convert-PX2PS -Path "C:\PixelArt"
         
         Renders all .px files found in the specified directory.
     
     .EXAMPLE
-        Get-ChildItem -Path "." -Filter "*.px" | ConvertFrom-PxFile
+        Get-ChildItem -Path "." -Filter "*.px" | Convert-PX2PS
         
         Processes .px files from pipeline input.
     
+    .EXAMPLE
+        $sb = Convert-PX2PS -Path "logo.px" -OutputMode ScriptBlock
+        & $sb
+        
+        Gets a scriptblock for deferred rendering.
+    
+    .EXAMPLE
+        Convert-PX2PS -Path "banner.px" -OutputMode Script -OutputPath "banner.ps1"
+        
+        Generates a standalone script file that can render the image.
+    
+    .EXAMPLE
+        $data = Convert-PX2PS -Path "image.px" -PassThru
+        
+        Gets pixel data without rendering.
+    
     .OUTPUTS
-        None by default. With -PassThru, outputs PSCustomObject with:
+        None by default.
+        With -OutputMode ScriptBlock, outputs [scriptblock].
+        With -PassThru, outputs PSCustomObject with:
         - FilePath: Full path to the .px file
         - Width: Image width in pixels
         - Height: Image height in pixels
@@ -47,15 +75,28 @@ function Convert-PX2PS {
         Requires PowerShell 5.1 or later.
         On Windows PowerShell 5.1, automatically enables Virtual Terminal Processing.
     #>
-    [CmdletBinding()]
-    [OutputType([void], [PSCustomObject])]
+    [CmdletBinding(DefaultParameterSetName = 'Display')]
+    [OutputType([void], [PSCustomObject], [scriptblock])]
     param(
-        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = 'Display')]
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = 'ScriptBlock')]
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = 'Script')]
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = 'PassThru')]
         [Alias('FullName')]
         [ValidateNotNullOrEmpty()]
         [string]$Path,
         
-        [Parameter()]
+        [Parameter(ParameterSetName = 'ScriptBlock')]
+        [Parameter(ParameterSetName = 'Script')]
+        [ValidateSet('ScriptBlock', 'Script')]
+        [string]$OutputMode,
+        
+        [Parameter(Mandatory, ParameterSetName = 'Script')]
+        [ValidatePattern('\.ps1$')]
+        [ValidateNotNullOrEmpty()]
+        [string]$OutputPath,
+        
+        [Parameter(ParameterSetName = 'PassThru')]
         [switch]$PassThru
     )
     
@@ -88,7 +129,26 @@ function Convert-PX2PS {
             Write-Host "Found $($pxFiles.Count) .px file(s)" -ForegroundColor Green
             
             foreach ($file in $pxFiles) {
-                ConvertFrom-PxFile -Path $file.FullName -PassThru:$PassThru
+                $params = @{
+                    Path = $file.FullName
+                }
+                
+                if ($PassThru.IsPresent) {
+                    $params['PassThru'] = $true
+                }
+                
+                if ($PSBoundParameters.ContainsKey('OutputMode')) {
+                    $params['OutputMode'] = $OutputMode
+                    
+                    if ($PSBoundParameters.ContainsKey('OutputPath')) {
+                        $baseName = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+                        $directory = [System.IO.Path]::GetDirectoryName($OutputPath)
+                        $extension = [System.IO.Path]::GetExtension($OutputPath)
+                        $params['OutputPath'] = [System.IO.Path]::Combine($directory, "$baseName$extension")
+                    }
+                }
+                
+                Convert-PX2PS @params
             }
             return
         }
@@ -126,6 +186,133 @@ function Convert-PX2PS {
                     Height = $height
                     Pixels = $pixels
                 })
+            } elseif ($OutputMode -eq 'ScriptBlock') {
+                $pixelsString = ($pixels | ForEach-Object { "@($($_ -join ','))" }) -join ",`n    "
+                
+                $scriptContent = @"
+`$ESC = [char]27
+`$LowerHalfBlock = [char]0x2584
+`$width = $width
+`$height = $height
+`$pixels = @(
+    $pixelsString
+)
+
+`$oddHeight = (`$height % 2) -eq 1
+`$startY = if (`$oddHeight) { -1 } else { 0 }
+`$endY = if (`$oddHeight) { `$height - 1 } else { `$height }
+
+for (`$y = `$startY; `$y -lt `$endY; `$y += 2) {
+    `$line = ""
+    for (`$x = 0; `$x -lt `$width; `$x++) {
+        `$topY = `$y
+        `$bottomY = `$y + 1
+        
+        if (`$topY -lt 0) {
+            `$topPixel = `$null
+        } else {
+            `$topIdx = (`$topY * `$width) + `$x
+            `$topPixel = if (`$topIdx -lt `$pixels.Count) { `$pixels[`$topIdx] } else { @(0, 0, 0, 0) }
+        }
+        
+        `$bottomIdx = (`$bottomY * `$width) + `$x
+        `$bottomPixel = if (`$bottomIdx -lt `$pixels.Count) { `$pixels[`$bottomIdx] } else { @(0, 0, 0, 0) }
+        
+        `$botR = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[0] }
+        `$botG = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[1] }
+        `$botB = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[2] }
+        
+        if (`$null -eq `$topPixel) {
+            `$fg = "`$ESC[38;2;`${botR};`${botG};`${botB}m"
+            `$line += "`${fg}`$LowerHalfBlock"
+        } else {
+            `$topR = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[0] }
+            `$topG = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[1] }
+            `$topB = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[2] }
+            
+            `$bg = "`$ESC[48;2;`${topR};`${topG};`${topB}m"
+            `$fg = "`$ESC[38;2;`${botR};`${botG};`${botB}m"
+            `$line += "`${bg}`${fg}`$LowerHalfBlock"
+        }
+    }
+    `$line += "`$ESC[0m`$ESC[K"
+    Write-Host `$line
+}
+
+Write-Host ""
+"@
+                Write-Output ([scriptblock]::Create($scriptContent))
+            } elseif ($OutputMode -eq 'Script') {
+                $scriptContent = @"
+#!/usr/bin/env pwsh
+# Auto-generated by PX2PS 2025.12.29
+# Source: $($pathItem.Name) (${width}x${height})
+# Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+
+`$ESC = [char]27
+`$LowerHalfBlock = [char]0x2584
+
+function Get-TrueColorFg {
+    param([int]`$R, [int]`$G, [int]`$B)
+    return "`$ESC[38;2;`${R};`${G};`${B}m"
+}
+
+function Get-TrueColorBg {
+    param([int]`$R, [int]`$G, [int]`$B)
+    return "`$ESC[48;2;`${R};`${G};`${B}m"
+}
+
+`$width = $width
+`$height = $height
+`$pixels = @(
+$(($pixels | ForEach-Object { "    @($($_ -join ','))" }) -join ",`n")
+)
+
+`$oddHeight = (`$height % 2) -eq 1
+`$startY = if (`$oddHeight) { -1 } else { 0 }
+`$endY = if (`$oddHeight) { `$height - 1 } else { `$height }
+
+for (`$y = `$startY; `$y -lt `$endY; `$y += 2) {
+    `$line = ""
+    for (`$x = 0; `$x -lt `$width; `$x++) {
+        `$topY = `$y
+        `$bottomY = `$y + 1
+        
+        if (`$topY -lt 0) {
+            `$topPixel = `$null
+        } else {
+            `$topIdx = (`$topY * `$width) + `$x
+            `$topPixel = if (`$topIdx -lt `$pixels.Count) { `$pixels[`$topIdx] } else { @(0, 0, 0, 0) }
+        }
+        
+        `$bottomIdx = (`$bottomY * `$width) + `$x
+        `$bottomPixel = if (`$bottomIdx -lt `$pixels.Count) { `$pixels[`$bottomIdx] } else { @(0, 0, 0, 0) }
+        
+        `$botR = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[0] }
+        `$botG = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[1] }
+        `$botB = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[2] }
+        
+        if (`$null -eq `$topPixel) {
+            `$fg = Get-TrueColorFg -R `$botR -G `$botG -B `$botB
+            `$line += "`${fg}`$LowerHalfBlock"
+        } else {
+            `$topR = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[0] }
+            `$topG = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[1] }
+            `$topB = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[2] }
+            
+            `$bg = Get-TrueColorBg -R `$topR -G `$topG -B `$topB
+            `$fg = Get-TrueColorFg -R `$botR -G `$botG -B `$botB
+            `$line += "`${bg}`${fg}`$LowerHalfBlock"
+        }
+    }
+    `$line += "`$ESC[0m`$ESC[K"
+    Write-Host `$line
+}
+
+Write-Host ""
+"@
+                Set-Content -Path $OutputPath -Value $scriptContent -Encoding UTF8 -NoNewline
+                Write-Verbose "Script file created: $OutputPath"
             } else {
                 Write-PxTerminal -Width $width -Height $height -Pixels $pixels
             }

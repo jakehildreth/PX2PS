@@ -17,7 +17,7 @@ Import-Module ./PX2PS/PX2PS.psd1
 ## Quick Start
 
 ```powershell
-# Convert a single .px file
+# Convert and display a .px file
 Convert-PX2PS -Path "image.px"
 
 # Convert all .px files in a directory using alias
@@ -25,6 +25,13 @@ px2ps -Path "C:\PixelArt"
 
 # Pipeline support
 Get-ChildItem -Path . -Filter "*.px" | Convert-PX2PS
+
+# Get scriptblock for deferred rendering
+$sb = Convert-PX2PS -Path "logo.px" -OutputMode ScriptBlock
+& $sb
+
+# Generate standalone script file
+Convert-PX2PS -Path "banner.px" -OutputMode Script -OutputPath "banner.ps1"
 
 # -PassThru to get pixel data without rendering
 $imageData = px2ps -Path "image.px" -PassThru
@@ -37,6 +44,8 @@ Write-Host "Dimensions: $($imageData.Width)x$($imageData.Height)"
 - [x] Renders .px files directly in the terminal using ANSI True Color
 - [x] Supports single-layer and multi-layer .px files
 - [x] Automatic layer compositing and transparency handling
+- [x] ScriptBlock output for deferred rendering
+- [x] Standalone script generation
 - [x] Cross-platform support (Windows, Linux, macOS)
 - [x] PowerShell 5.1+ compatible
 - [x] Pipeline input support
