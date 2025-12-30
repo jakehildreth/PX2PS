@@ -61,10 +61,10 @@ Write-Host "Dimensions: $($imageData.Width)x$($imageData.Height)"
 
 PX2PS reads Pixquare .px files, decompresses the zlib-encoded layer data, composites multiple layers if present, and renders the final image using Unicode lower half block characters (▄) with ANSI True Color escape sequences. Each terminal line represents two rows of pixels.
 
-## Credits
-
-Created with 💜 by [Jake Hildreth](https://jakehildreth.com)
-
 ## License
 
-See [LICENSE](LICENSE) file for details.
+MIT License w/Commons Clause - see [LICENSE](LICENSE) file for details.
+
+---
+
+Made with 💜 by [Jake Hildreth](https://jakehildreth.com)
