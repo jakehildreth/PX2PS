@@ -1,10 +1,11 @@
 function Get-PxDimension {
     <#
     .SYNOPSIS
-        Reads width and height from .px file header.
+        Reads width and height from .px file according to Pixquare binary spec.
     
     .DESCRIPTION
-        Extracts dimensions stored as 32-bit little-endian integers at offsets 0x64 and 0x68.
+        Parses the Artwork model header and content to extract canvas Size.
+        According to spec: Artwork has 64-byte header, then DumbString ID, then Size (UInt32 Width, UInt32 Height).
     
     .PARAMETER Data
         Byte array containing .px file data.
@@ -19,8 +20,16 @@ function Get-PxDimension {
         [byte[]]$Data
     )
     
-    $width = [BitConverter]::ToInt32($Data, 0x64)
-    $height = [BitConverter]::ToInt32($Data, 0x68)
+    # Artwork header is 64 bytes
+    # Byte 8 is the ID length
+    $idLength = $Data[8]
+    
+    # Canvas Size starts after: 64-byte header + ID string (idLength bytes)
+    $sizeOffset = 64 + $idLength
+    
+    # Size type is: UInt32 Width, UInt32 Height (little-endian)
+    $width = [BitConverter]::ToUInt32($Data, $sizeOffset)
+    $height = [BitConverter]::ToUInt32($Data, $sizeOffset + 4)
     
     return [PSCustomObject]@{
         Width = $width

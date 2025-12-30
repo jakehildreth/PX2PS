@@ -40,72 +40,35 @@ function Merge-PxLayer {
             $b = $layer[$idx + 2]
             $a = $layer[$idx + 3]
             
-            if ($r -eq 0 -and $g -eq 0 -and $b -eq 0) {
-                $a = 0
-            }
             $pixels.Add([byte[]]@($r, $g, $b, $a))
         }
     } else {
-        $layer0 = $Layers[0]
-        $layer0IsColorMask = $true
-        
-        for ($i = 0; $i -lt $pixelCount; $i++) {
-            $idx = $i * 4
-            $r = $layer0[$idx]
-            $g = $layer0[$idx + 1]
-            $b = $layer0[$idx + 2]
-            
-            if (($r -ne 0 -or $g -ne 0 -or $b -ne 0) -and $layer0[$idx + 3] -gt 0) {
-                $layer0IsColorMask = $false
-                break
-            }
-        }
-        
+        # Composite layers from bottom to top
+        # Start with bottom layer (last in array) and work upward
         for ($i = 0; $i -lt $pixelCount; $i++) {
             $idx = $i * 4
             
-            if ($layer0IsColorMask) {
-                $maskAlpha = $layer0[$idx + 3]
+            # Start with bottom layer
+            $bottomLayer = $Layers[$Layers.Count - 1]
+            $r = $bottomLayer[$idx]
+            $g = $bottomLayer[$idx + 1]
+            $b = $bottomLayer[$idx + 2]
+            $a = $bottomLayer[$idx + 3]
+            
+            # Composite each layer on top from bottom to top
+            for ($li = $Layers.Count - 2; $li -ge 0; $li--) {
+                $layer = $Layers[$li]
+                $lr = $layer[$idx]
+                $lg = $layer[$idx + 1]
+                $lb = $layer[$idx + 2]
+                $la = $layer[$idx + 3]
                 
-                if ($maskAlpha -eq 0) {
-                    $r = $Layers[1][$idx]
-                    $g = $Layers[1][$idx + 1]
-                    $b = $Layers[1][$idx + 2]
-                    $a = $Layers[1][$idx + 3]
-                    
-                    for ($li = 2; $li -lt $Layers.Count; $li++) {
-                        $layer = $Layers[$li]
-                        $la = $layer[$idx + 3]
-                        if ($la -gt 0) {
-                            $r = $layer[$idx]
-                            $g = $layer[$idx + 1]
-                            $b = $layer[$idx + 2]
-                            $a = $la
-                        }
-                    }
-                } else {
-                    $r = 0
-                    $g = 0
-                    $b = 0
-                    $a = 0
-                }
-            } else {
-                $bottomLayer = $Layers[$Layers.Count - 1]
-                $r = $bottomLayer[$idx]
-                $g = $bottomLayer[$idx + 1]
-                $b = $bottomLayer[$idx + 2]
-                $a = $bottomLayer[$idx + 3]
-                
-                for ($li = $Layers.Count - 2; $li -ge 0; $li--) {
-                    $layer = $Layers[$li]
-                    $la = $layer[$idx + 3]
-                    
-                    if ($la -gt 0) {
-                        $r = $layer[$idx]
-                        $g = $layer[$idx + 1]
-                        $b = $layer[$idx + 2]
-                        $a = $la
-                    }
+                # Composite if top layer has opacity (even if it's black)
+                if ($la -gt 0) {
+                    $r = $lr
+                    $g = $lg
+                    $b = $lb
+                    $a = $la
                 }
             }
             

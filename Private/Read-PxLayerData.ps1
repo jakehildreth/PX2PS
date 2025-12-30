@@ -49,5 +49,5 @@ function Read-PxLayerData {
         }
     }
     
-    return $layers.ToArray()
+    return , $layers.ToArray()
 }
