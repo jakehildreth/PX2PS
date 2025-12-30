@@ -1,4 +1,4 @@
-![A graphic that combines the Pixquare logo (the letters P and x in a pixelated style) with the PowerShell Core logo (A >_ console icon tilted to the right.)](PS2PX.png)
+![A graphic that combines the Pixquare logo (the letters P and x in a pixelated style) with the PowerShell Core logo (A >_ console icon tilted to the right.)](./PS2PX.png)
 
 # PX2PS
 
