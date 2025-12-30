@@ -54,7 +54,7 @@ Write-Host "Dimensions: $($imageData.Width)x$($imageData.Height)"
 
 ## Requirements
 
-- PowerShell 5.1 or later
+- PowerShell 5.1 or later (ISE is _not_ supported.)
 - Terminal with True Color (24-bit color) support
 
 ## How It Works
