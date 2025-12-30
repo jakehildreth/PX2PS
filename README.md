@@ -63,7 +63,7 @@ PX2PS reads Pixquare .px files, decompresses the zlib-encoded layer data, compos
 
 ## Credits
 
-Created by [Jake Hildreth](https://jakehildreth.com)
+Created with 💜 by [Jake Hildreth](https://jakehildreth.com)
 
 ## License
 
