@@ -204,44 +204,118 @@ function Convert-PX2PS {
 `$startY = if (`$oddHeight) { -1 } else { 0 }
 `$endY = if (`$oddHeight) { `$height - 1 } else { `$height }
 
-for (`$y = `$startY; `$y -lt `$endY; `$y += 2) {
-    `$line = ""
-    for (`$x = 0; `$x -lt `$width; `$x++) {
-        `$topY = `$y
-        `$bottomY = `$y + 1
-        
-        if (`$topY -lt 0) {
-            `$topPixel = `$null
-        } else {
-            `$topIdx = (`$topY * `$width) + `$x
-            `$topPixel = if (`$topIdx -lt `$pixels.Count) { `$pixels[`$topIdx] } else { @(0, 0, 0, 0) }
+if (`$Host.Name -eq 'Windows PowerShell ISE Host') {
+    function ConvertTo-ConsoleColor {
+        param([int]`$R, [int]`$G, [int]`$B)
+        `$colorMap = @(
+            @{ Color = [System.ConsoleColor]::Black;       R = 0;   G = 0;   B = 0   }
+            @{ Color = [System.ConsoleColor]::DarkBlue;    R = 0;   G = 0;   B = 128 }
+            @{ Color = [System.ConsoleColor]::DarkGreen;   R = 0;   G = 128; B = 0   }
+            @{ Color = [System.ConsoleColor]::DarkCyan;    R = 0;   G = 128; B = 128 }
+            @{ Color = [System.ConsoleColor]::DarkRed;     R = 128; G = 0;   B = 0   }
+            @{ Color = [System.ConsoleColor]::DarkMagenta; R = 128; G = 0;   B = 128 }
+            @{ Color = [System.ConsoleColor]::DarkYellow;  R = 128; G = 128; B = 0   }
+            @{ Color = [System.ConsoleColor]::Gray;        R = 192; G = 192; B = 192 }
+            @{ Color = [System.ConsoleColor]::DarkGray;    R = 128; G = 128; B = 128 }
+            @{ Color = [System.ConsoleColor]::Blue;        R = 0;   G = 0;   B = 255 }
+            @{ Color = [System.ConsoleColor]::Green;       R = 0;   G = 255; B = 0   }
+            @{ Color = [System.ConsoleColor]::Cyan;        R = 0;   G = 255; B = 255 }
+            @{ Color = [System.ConsoleColor]::Red;         R = 255; G = 0;   B = 0   }
+            @{ Color = [System.ConsoleColor]::Magenta;     R = 255; G = 0;   B = 255 }
+            @{ Color = [System.ConsoleColor]::Yellow;      R = 255; G = 255; B = 0   }
+            @{ Color = [System.ConsoleColor]::White;       R = 255; G = 255; B = 255 }
+        )
+        `$nearestColor = [System.ConsoleColor]::Black
+        `$minDistance = [int]::MaxValue
+        foreach (`$entry in `$colorMap) {
+            `$dr = `$R - `$entry.R
+            `$dg = `$G - `$entry.G
+            `$db = `$B - `$entry.B
+            `$distance = (`$dr * `$dr) + (`$dg * `$dg) + (`$db * `$db)
+            if (`$distance -lt `$minDistance) {
+                `$minDistance = `$distance
+                `$nearestColor = `$entry.Color
+            }
         }
-        
-        `$bottomIdx = (`$bottomY * `$width) + `$x
-        `$bottomPixel = if (`$bottomIdx -lt `$pixels.Count) { `$pixels[`$bottomIdx] } else { @(0, 0, 0, 0) }
-        
-        `$botR = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[0] }
-        `$botG = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[1] }
-        `$botB = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[2] }
-        
-        if (`$null -eq `$topPixel) {
-            `$fg = "`$ESC[38;2;`${botR};`${botG};`${botB}m"
-            `$line += "`${fg}`$LowerHalfBlock"
-        } else {
-            `$topR = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[0] }
-            `$topG = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[1] }
-            `$topB = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[2] }
-            
-            `$bg = "`$ESC[48;2;`${topR};`${topG};`${topB}m"
-            `$fg = "`$ESC[38;2;`${botR};`${botG};`${botB}m"
-            `$line += "`${bg}`${fg}`$LowerHalfBlock"
-        }
+        return `$nearestColor
     }
-    `$line += "`$ESC[0m`$ESC[K"
-    Write-Host `$line
-}
 
-Write-Host ""
+    for (`$y = `$startY; `$y -lt `$endY; `$y += 2) {
+        for (`$x = 0; `$x -lt `$width; `$x++) {
+            `$topY = `$y
+            `$bottomY = `$y + 1
+
+            if (`$topY -lt 0) {
+                `$topPixel = `$null
+            } else {
+                `$topIdx = (`$topY * `$width) + `$x
+                `$topPixel = if (`$topIdx -lt `$pixels.Count) { `$pixels[`$topIdx] } else { @(0, 0, 0, 0) }
+            }
+
+            `$bottomIdx = (`$bottomY * `$width) + `$x
+            `$bottomPixel = if (`$bottomIdx -lt `$pixels.Count) { `$pixels[`$bottomIdx] } else { @(0, 0, 0, 0) }
+
+            `$botR = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[0] }
+            `$botG = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[1] }
+            `$botB = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[2] }
+
+            `$fgColor = ConvertTo-ConsoleColor -R `$botR -G `$botG -B `$botB
+
+            if (`$null -eq `$topPixel) {
+                Write-Host `$LowerHalfBlock -ForegroundColor `$fgColor -NoNewline
+            } else {
+                `$topR = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[0] }
+                `$topG = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[1] }
+                `$topB = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[2] }
+
+                `$bgColor = ConvertTo-ConsoleColor -R `$topR -G `$topG -B `$topB
+                Write-Host `$LowerHalfBlock -ForegroundColor `$fgColor -BackgroundColor `$bgColor -NoNewline
+            }
+        }
+        Write-Host ''
+    }
+
+    Write-Host ''
+} else {
+    for (`$y = `$startY; `$y -lt `$endY; `$y += 2) {
+        `$line = ""
+        for (`$x = 0; `$x -lt `$width; `$x++) {
+            `$topY = `$y
+            `$bottomY = `$y + 1
+
+            if (`$topY -lt 0) {
+                `$topPixel = `$null
+            } else {
+                `$topIdx = (`$topY * `$width) + `$x
+                `$topPixel = if (`$topIdx -lt `$pixels.Count) { `$pixels[`$topIdx] } else { @(0, 0, 0, 0) }
+            }
+
+            `$bottomIdx = (`$bottomY * `$width) + `$x
+            `$bottomPixel = if (`$bottomIdx -lt `$pixels.Count) { `$pixels[`$bottomIdx] } else { @(0, 0, 0, 0) }
+
+            `$botR = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[0] }
+            `$botG = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[1] }
+            `$botB = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[2] }
+
+            if (`$null -eq `$topPixel) {
+                `$fg = "`$ESC[38;2;`${botR};`${botG};`${botB}m"
+                `$line += "`${fg}`$LowerHalfBlock"
+            } else {
+                `$topR = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[0] }
+                `$topG = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[1] }
+                `$topB = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[2] }
+
+                `$bg = "`$ESC[48;2;`${topR};`${topG};`${topB}m"
+                `$fg = "`$ESC[38;2;`${botR};`${botG};`${botB}m"
+                `$line += "`${bg}`${fg}`$LowerHalfBlock"
+            }
+        }
+        `$line += "`$ESC[0m`$ESC[K"
+        Write-Host `$line
+    }
+
+    Write-Host ""
+}
 "@
                 Write-Output ([scriptblock]::Create($scriptContent))
             } elseif ($OutputMode -eq 'Script') {
@@ -252,7 +326,7 @@ Write-Host ""
 # Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 
 # Enable Virtual Terminal Processing for ANSI colors (Windows PowerShell 5.1 compatibility)
-if (`$PSVersionTable.PSVersion.Major -le 5 -and `$env:OS -eq 'Windows_NT') {
+if (`$PSVersionTable.PSVersion.Major -le 5 -and `$env:OS -eq 'Windows_NT' -and `$Host.Name -ne 'Windows PowerShell ISE Host') {
     try {
         Add-Type -TypeDefinition @`"
 using System;
@@ -281,6 +355,41 @@ public class VTConsole {
 `$ESC = [char]27
 `$LowerHalfBlock = [char]0x2584
 
+function ConvertTo-ConsoleColor {
+    param([int]`$R, [int]`$G, [int]`$B)
+    `$colorMap = @(
+        @{ Color = [System.ConsoleColor]::Black;       R = 0;   G = 0;   B = 0   }
+        @{ Color = [System.ConsoleColor]::DarkBlue;    R = 0;   G = 0;   B = 128 }
+        @{ Color = [System.ConsoleColor]::DarkGreen;   R = 0;   G = 128; B = 0   }
+        @{ Color = [System.ConsoleColor]::DarkCyan;    R = 0;   G = 128; B = 128 }
+        @{ Color = [System.ConsoleColor]::DarkRed;     R = 128; G = 0;   B = 0   }
+        @{ Color = [System.ConsoleColor]::DarkMagenta; R = 128; G = 0;   B = 128 }
+        @{ Color = [System.ConsoleColor]::DarkYellow;  R = 128; G = 128; B = 0   }
+        @{ Color = [System.ConsoleColor]::Gray;        R = 192; G = 192; B = 192 }
+        @{ Color = [System.ConsoleColor]::DarkGray;    R = 128; G = 128; B = 128 }
+        @{ Color = [System.ConsoleColor]::Blue;        R = 0;   G = 0;   B = 255 }
+        @{ Color = [System.ConsoleColor]::Green;       R = 0;   G = 255; B = 0   }
+        @{ Color = [System.ConsoleColor]::Cyan;        R = 0;   G = 255; B = 255 }
+        @{ Color = [System.ConsoleColor]::Red;         R = 255; G = 0;   B = 0   }
+        @{ Color = [System.ConsoleColor]::Magenta;     R = 255; G = 0;   B = 255 }
+        @{ Color = [System.ConsoleColor]::Yellow;      R = 255; G = 255; B = 0   }
+        @{ Color = [System.ConsoleColor]::White;       R = 255; G = 255; B = 255 }
+    )
+    `$nearestColor = [System.ConsoleColor]::Black
+    `$minDistance = [int]::MaxValue
+    foreach (`$entry in `$colorMap) {
+        `$dr = `$R - `$entry.R
+        `$dg = `$G - `$entry.G
+        `$db = `$B - `$entry.B
+        `$distance = (`$dr * `$dr) + (`$dg * `$dg) + (`$db * `$db)
+        if (`$distance -lt `$minDistance) {
+            `$minDistance = `$distance
+            `$nearestColor = `$entry.Color
+        }
+    }
+    return `$nearestColor
+}
+
 function Get-TrueColorFg {
     param([int]`$R, [int]`$G, [int]`$B)
     return "`$ESC[38;2;`${R};`${G};`${B}m"
@@ -301,44 +410,83 @@ $(($pixels | ForEach-Object { "    @($($_ -join ','))" }) -join ",`n")
 `$startY = if (`$oddHeight) { -1 } else { 0 }
 `$endY = if (`$oddHeight) { `$height - 1 } else { `$height }
 
-for (`$y = `$startY; `$y -lt `$endY; `$y += 2) {
-    `$line = ""
-    for (`$x = 0; `$x -lt `$width; `$x++) {
-        `$topY = `$y
-        `$bottomY = `$y + 1
-        
-        if (`$topY -lt 0) {
-            `$topPixel = `$null
-        } else {
-            `$topIdx = (`$topY * `$width) + `$x
-            `$topPixel = if (`$topIdx -lt `$pixels.Count) { `$pixels[`$topIdx] } else { @(0, 0, 0, 0) }
-        }
-        
-        `$bottomIdx = (`$bottomY * `$width) + `$x
-        `$bottomPixel = if (`$bottomIdx -lt `$pixels.Count) { `$pixels[`$bottomIdx] } else { @(0, 0, 0, 0) }
-        
-        `$botR = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[0] }
-        `$botG = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[1] }
-        `$botB = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[2] }
-        
-        if (`$null -eq `$topPixel) {
-            `$fg = Get-TrueColorFg -R `$botR -G `$botG -B `$botB
-            `$line += "`${fg}`$LowerHalfBlock"
-        } else {
-            `$topR = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[0] }
-            `$topG = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[1] }
-            `$topB = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[2] }
-            
-            `$bg = Get-TrueColorBg -R `$topR -G `$topG -B `$topB
-            `$fg = Get-TrueColorFg -R `$botR -G `$botG -B `$botB
-            `$line += "`${bg}`${fg}`$LowerHalfBlock"
-        }
-    }
-    `$line += "`$ESC[0m`$ESC[K"
-    Write-Host `$line
-}
+if (`$Host.Name -eq 'Windows PowerShell ISE Host') {
+    for (`$y = `$startY; `$y -lt `$endY; `$y += 2) {
+        for (`$x = 0; `$x -lt `$width; `$x++) {
+            `$topY = `$y
+            `$bottomY = `$y + 1
 
-Write-Host ""
+            if (`$topY -lt 0) {
+                `$topPixel = `$null
+            } else {
+                `$topIdx = (`$topY * `$width) + `$x
+                `$topPixel = if (`$topIdx -lt `$pixels.Count) { `$pixels[`$topIdx] } else { @(0, 0, 0, 0) }
+            }
+
+            `$bottomIdx = (`$bottomY * `$width) + `$x
+            `$bottomPixel = if (`$bottomIdx -lt `$pixels.Count) { `$pixels[`$bottomIdx] } else { @(0, 0, 0, 0) }
+
+            `$botR = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[0] }
+            `$botG = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[1] }
+            `$botB = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[2] }
+
+            `$fgColor = ConvertTo-ConsoleColor -R `$botR -G `$botG -B `$botB
+
+            if (`$null -eq `$topPixel) {
+                Write-Host `$LowerHalfBlock -ForegroundColor `$fgColor -NoNewline
+            } else {
+                `$topR = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[0] }
+                `$topG = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[1] }
+                `$topB = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[2] }
+
+                `$bgColor = ConvertTo-ConsoleColor -R `$topR -G `$topG -B `$topB
+                Write-Host `$LowerHalfBlock -ForegroundColor `$fgColor -BackgroundColor `$bgColor -NoNewline
+            }
+        }
+        Write-Host ''
+    }
+
+    Write-Host ''
+} else {
+    for (`$y = `$startY; `$y -lt `$endY; `$y += 2) {
+        `$line = ""
+        for (`$x = 0; `$x -lt `$width; `$x++) {
+            `$topY = `$y
+            `$bottomY = `$y + 1
+
+            if (`$topY -lt 0) {
+                `$topPixel = `$null
+            } else {
+                `$topIdx = (`$topY * `$width) + `$x
+                `$topPixel = if (`$topIdx -lt `$pixels.Count) { `$pixels[`$topIdx] } else { @(0, 0, 0, 0) }
+            }
+
+            `$bottomIdx = (`$bottomY * `$width) + `$x
+            `$bottomPixel = if (`$bottomIdx -lt `$pixels.Count) { `$pixels[`$bottomIdx] } else { @(0, 0, 0, 0) }
+
+            `$botR = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[0] }
+            `$botG = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[1] }
+            `$botB = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[2] }
+
+            if (`$null -eq `$topPixel) {
+                `$fg = Get-TrueColorFg -R `$botR -G `$botG -B `$botB
+                `$line += "`${fg}`$LowerHalfBlock"
+            } else {
+                `$topR = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[0] }
+                `$topG = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[1] }
+                `$topB = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[2] }
+
+                `$bg = Get-TrueColorBg -R `$topR -G `$topG -B `$topB
+                `$fg = Get-TrueColorFg -R `$botR -G `$botG -B `$botB
+                `$line += "`${bg}`${fg}`$LowerHalfBlock"
+            }
+        }
+        `$line += "`$ESC[0m`$ESC[K"
+        Write-Host `$line
+    }
+
+    Write-Host ""
+}
 "@
                 Set-Content -Path $OutputPath -Value $scriptContent -Encoding UTF8 -NoNewline
                 Write-Verbose "Script file created: $OutputPath"

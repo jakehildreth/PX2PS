@@ -1,5 +1,5 @@
 # Enable Virtual Terminal Processing for ANSI colors (Windows PowerShell 5.1 compatibility)
-if ($PSVersionTable.PSVersion.Major -le 5 -and $env:OS -eq 'Windows_NT') {
+if ($PSVersionTable.PSVersion.Major -le 5 -and $env:OS -eq 'Windows_NT' -and $Host.Name -ne 'Windows PowerShell ISE Host') {
     $vtEnabled = $false
     try {
         Add-Type -TypeDefinition @"
