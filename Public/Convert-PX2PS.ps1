@@ -221,6 +221,7 @@ function Convert-PX2PS {
                 $scriptContent = @"
 `$ESC = [char]27
 `$LowerHalfBlock = [char]0x2584
+`$UpperHalfBlock = [char]0x2580
 `$width = $width
 `$height = $height
 `$pixels = @(
@@ -282,21 +283,21 @@ if ($useConsoleColorExpr) {
             `$bottomIdx = (`$bottomY * `$width) + `$x
             `$bottomPixel = if (`$bottomIdx -lt `$pixels.Count) { `$pixels[`$bottomIdx] } else { @(0, 0, 0, 0) }
 
-            `$botR = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[0] }
-            `$botG = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[1] }
-            `$botB = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[2] }
+            `$topTransparent = (`$null -eq `$topPixel) -or (`$topPixel[3] -lt 32)
+            `$bottomTransparent = `$bottomPixel[3] -lt 32
 
-            `$fgColor = ConvertTo-ConsoleColor -R `$botR -G `$botG -B `$botB
-
-            if (`$null -eq `$topPixel) {
+            if (-not `$topTransparent -and -not `$bottomTransparent) {
+                `$fgColor = ConvertTo-ConsoleColor -R `$bottomPixel[0] -G `$bottomPixel[1] -B `$bottomPixel[2]
+                `$bgColor = ConvertTo-ConsoleColor -R `$topPixel[0] -G `$topPixel[1] -B `$topPixel[2]
+                Write-Host `$LowerHalfBlock -ForegroundColor `$fgColor -BackgroundColor `$bgColor -NoNewline
+            } elseif (-not `$topTransparent -and `$bottomTransparent) {
+                `$fgColor = ConvertTo-ConsoleColor -R `$topPixel[0] -G `$topPixel[1] -B `$topPixel[2]
+                Write-Host `$UpperHalfBlock -ForegroundColor `$fgColor -NoNewline
+            } elseif (`$topTransparent -and -not `$bottomTransparent) {
+                `$fgColor = ConvertTo-ConsoleColor -R `$bottomPixel[0] -G `$bottomPixel[1] -B `$bottomPixel[2]
                 Write-Host `$LowerHalfBlock -ForegroundColor `$fgColor -NoNewline
             } else {
-                `$topR = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[0] }
-                `$topG = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[1] }
-                `$topB = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[2] }
-
-                `$bgColor = ConvertTo-ConsoleColor -R `$topR -G `$topG -B `$topB
-                Write-Host `$LowerHalfBlock -ForegroundColor `$fgColor -BackgroundColor `$bgColor -NoNewline
+                Write-Host ' ' -NoNewline
             }
         }
         Write-Host ''
@@ -320,21 +321,21 @@ if ($useConsoleColorExpr) {
             `$bottomIdx = (`$bottomY * `$width) + `$x
             `$bottomPixel = if (`$bottomIdx -lt `$pixels.Count) { `$pixels[`$bottomIdx] } else { @(0, 0, 0, 0) }
 
-            `$botR = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[0] }
-            `$botG = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[1] }
-            `$botB = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[2] }
+            `$topTransparent = (`$null -eq `$topPixel) -or (`$topPixel[3] -lt 32)
+            `$bottomTransparent = `$bottomPixel[3] -lt 32
 
-            if (`$null -eq `$topPixel) {
-                `$fg = "`$ESC[38;2;`${botR};`${botG};`${botB}m"
-                `$line += "`${fg}`$LowerHalfBlock"
-            } else {
-                `$topR = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[0] }
-                `$topG = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[1] }
-                `$topB = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[2] }
-
-                `$bg = "`$ESC[48;2;`${topR};`${topG};`${topB}m"
-                `$fg = "`$ESC[38;2;`${botR};`${botG};`${botB}m"
+            if (-not `$topTransparent -and -not `$bottomTransparent) {
+                `$bg = "`$ESC[48;2;`$(`$topPixel[0]);`$(`$topPixel[1]);`$(`$topPixel[2])m"
+                `$fg = "`$ESC[38;2;`$(`$bottomPixel[0]);`$(`$bottomPixel[1]);`$(`$bottomPixel[2])m"
                 `$line += "`${bg}`${fg}`$LowerHalfBlock"
+            } elseif (-not `$topTransparent -and `$bottomTransparent) {
+                `$fg = "`$ESC[38;2;`$(`$topPixel[0]);`$(`$topPixel[1]);`$(`$topPixel[2])m"
+                `$line += "`$ESC[0m`${fg}`$UpperHalfBlock"
+            } elseif (`$topTransparent -and -not `$bottomTransparent) {
+                `$fg = "`$ESC[38;2;`$(`$bottomPixel[0]);`$(`$bottomPixel[1]);`$(`$bottomPixel[2])m"
+                `$line += "`$ESC[0m`${fg}`$LowerHalfBlock"
+            } else {
+                `$line += "`$ESC[0m "
             }
         }
         `$line += "`$ESC[0m`$ESC[K"
@@ -387,6 +388,7 @@ public class VTConsole {
 
 `$ESC = [char]27
 `$LowerHalfBlock = [char]0x2584
+`$UpperHalfBlock = [char]0x2580
 
 function ConvertTo-ConsoleColor {
     param([int]`$R, [int]`$G, [int]`$B)
@@ -459,21 +461,21 @@ if ($useConsoleColorExprScript) {
             `$bottomIdx = (`$bottomY * `$width) + `$x
             `$bottomPixel = if (`$bottomIdx -lt `$pixels.Count) { `$pixels[`$bottomIdx] } else { @(0, 0, 0, 0) }
 
-            `$botR = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[0] }
-            `$botG = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[1] }
-            `$botB = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[2] }
+            `$topTransparent = (`$null -eq `$topPixel) -or (`$topPixel[3] -lt 32)
+            `$bottomTransparent = `$bottomPixel[3] -lt 32
 
-            `$fgColor = ConvertTo-ConsoleColor -R `$botR -G `$botG -B `$botB
-
-            if (`$null -eq `$topPixel) {
+            if (-not `$topTransparent -and -not `$bottomTransparent) {
+                `$fgColor = ConvertTo-ConsoleColor -R `$bottomPixel[0] -G `$bottomPixel[1] -B `$bottomPixel[2]
+                `$bgColor = ConvertTo-ConsoleColor -R `$topPixel[0] -G `$topPixel[1] -B `$topPixel[2]
+                Write-Host `$LowerHalfBlock -ForegroundColor `$fgColor -BackgroundColor `$bgColor -NoNewline
+            } elseif (-not `$topTransparent -and `$bottomTransparent) {
+                `$fgColor = ConvertTo-ConsoleColor -R `$topPixel[0] -G `$topPixel[1] -B `$topPixel[2]
+                Write-Host `$UpperHalfBlock -ForegroundColor `$fgColor -NoNewline
+            } elseif (`$topTransparent -and -not `$bottomTransparent) {
+                `$fgColor = ConvertTo-ConsoleColor -R `$bottomPixel[0] -G `$bottomPixel[1] -B `$bottomPixel[2]
                 Write-Host `$LowerHalfBlock -ForegroundColor `$fgColor -NoNewline
             } else {
-                `$topR = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[0] }
-                `$topG = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[1] }
-                `$topB = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[2] }
-
-                `$bgColor = ConvertTo-ConsoleColor -R `$topR -G `$topG -B `$topB
-                Write-Host `$LowerHalfBlock -ForegroundColor `$fgColor -BackgroundColor `$bgColor -NoNewline
+                Write-Host ' ' -NoNewline
             }
         }
         Write-Host ''
@@ -497,21 +499,21 @@ if ($useConsoleColorExprScript) {
             `$bottomIdx = (`$bottomY * `$width) + `$x
             `$bottomPixel = if (`$bottomIdx -lt `$pixels.Count) { `$pixels[`$bottomIdx] } else { @(0, 0, 0, 0) }
 
-            `$botR = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[0] }
-            `$botG = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[1] }
-            `$botB = if (`$bottomPixel[3] -lt 32) { 0 } else { `$bottomPixel[2] }
+            `$topTransparent = (`$null -eq `$topPixel) -or (`$topPixel[3] -lt 32)
+            `$bottomTransparent = `$bottomPixel[3] -lt 32
 
-            if (`$null -eq `$topPixel) {
-                `$fg = Get-TrueColorFg -R `$botR -G `$botG -B `$botB
-                `$line += "`${fg}`$LowerHalfBlock"
-            } else {
-                `$topR = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[0] }
-                `$topG = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[1] }
-                `$topB = if (`$topPixel[3] -lt 32) { 0 } else { `$topPixel[2] }
-
-                `$bg = Get-TrueColorBg -R `$topR -G `$topG -B `$topB
-                `$fg = Get-TrueColorFg -R `$botR -G `$botG -B `$botB
+            if (-not `$topTransparent -and -not `$bottomTransparent) {
+                `$bg = Get-TrueColorBg -R `$topPixel[0] -G `$topPixel[1] -B `$topPixel[2]
+                `$fg = Get-TrueColorFg -R `$bottomPixel[0] -G `$bottomPixel[1] -B `$bottomPixel[2]
                 `$line += "`${bg}`${fg}`$LowerHalfBlock"
+            } elseif (-not `$topTransparent -and `$bottomTransparent) {
+                `$fg = Get-TrueColorFg -R `$topPixel[0] -G `$topPixel[1] -B `$topPixel[2]
+                `$line += "`$ESC[0m`${fg}`$UpperHalfBlock"
+            } elseif (`$topTransparent -and -not `$bottomTransparent) {
+                `$fg = Get-TrueColorFg -R `$bottomPixel[0] -G `$bottomPixel[1] -B `$bottomPixel[2]
+                `$line += "`$ESC[0m`${fg}`$LowerHalfBlock"
+            } else {
+                `$line += "`$ESC[0m "
             }
         }
         `$line += "`$ESC[0m`$ESC[K"
