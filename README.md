@@ -6,8 +6,12 @@ A PowerShell module that converts [Pixquare](https://pixquare.app) .px files to 
 
 ## Installation
 
-### From Source
+From the PowerShell Gallery (preferred):
+```powershell
+Install-Module -Name PX2PS -Scope CurrentUser -Force
+```
 
+From source:
 ```powershell
 # Clone the repository
 git clone https://github.com/jakehildreth/PX2PS.git
@@ -54,12 +58,13 @@ Write-Host "Dimensions: $($imageData.Width)x$($imageData.Height)"
 
 ## Requirements
 
-- PowerShell 5.1 or later (ISE is _not_ supported.)
-- Terminal with True Color (24-bit color) support
+- PowerShell 5.1 or later
 
 ## How It Works
 
 PX2PS reads Pixquare .px files, decompresses the zlib-encoded layer data, composites multiple layers if present, and renders the final image using Unicode lower half block characters (▄) with ANSI True Color escape sequences. Each terminal line represents two rows of pixels.
+
+In terminals that do not support ANSI sequences (e.g., PowerShell ISE), pixels are written using ConsoleColor instead of ANSI.
 
 ## License
 
