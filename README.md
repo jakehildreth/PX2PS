@@ -2,7 +2,7 @@
 
 # PX2PS
 
-A PowerShell module that converts [Pixquare](https://pixquare.app) .px files to terminal pixel graphics using ANSI True Color.
+A PowerShell module that converts [Pixquare](https://pixquare.app) .px files to terminal pixel graphics using ANSI True Color in terminals that support ANSI escape sequences and ConsoleColor in terminals that don't. (Please don't use ISE anymore...)
 
 ## Installation
 
