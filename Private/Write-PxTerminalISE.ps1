@@ -7,6 +7,7 @@ function Write-PxTerminalISE {
         ISE-compatible fallback renderer that uses Write-Host with
         -ForegroundColor and -BackgroundColor instead of ANSI escape sequences.
         Colors are mapped from 24-bit RGB to the nearest of 16 ConsoleColor values.
+        Supports transparency by omitting color parameters for transparent pixels.
 
     .PARAMETER Width
         Image width in pixels.
@@ -48,22 +49,22 @@ function Write-PxTerminalISE {
             $bottomIdx = ($bottomY * $Width) + $x
             $bottomPixel = if ($bottomIdx -lt $Pixels.Count) { $Pixels[$bottomIdx] } else { @(0, 0, 0, 0) }
 
-            $botR = if ($bottomPixel[3] -lt 32) { 0 } else { $bottomPixel[0] }
-            $botG = if ($bottomPixel[3] -lt 32) { 0 } else { $bottomPixel[1] }
-            $botB = if ($bottomPixel[3] -lt 32) { 0 } else { $bottomPixel[2] }
+            $cell = Get-PxCellInfo -TopPixel $topPixel -BottomPixel $bottomPixel
 
-            $fgColor = ConvertTo-ConsoleColor -R $botR -G $botG -B $botB
-
-            if ($null -eq $topPixel) {
-                Write-Host $script:LowerHalfBlock -ForegroundColor $fgColor -NoNewline
-            } else {
-                $topR = if ($topPixel[3] -lt 32) { 0 } else { $topPixel[0] }
-                $topG = if ($topPixel[3] -lt 32) { 0 } else { $topPixel[1] }
-                $topB = if ($topPixel[3] -lt 32) { 0 } else { $topPixel[2] }
-
-                $bgColor = ConvertTo-ConsoleColor -R $topR -G $topG -B $topB
-                Write-Host $script:LowerHalfBlock -ForegroundColor $fgColor -BackgroundColor $bgColor -NoNewline
+            $writeHostParams = @{
+                Object    = $cell.Character
+                NoNewline = $true
             }
+
+            if ($null -ne $cell.ForegroundRGB) {
+                $writeHostParams['ForegroundColor'] = ConvertTo-ConsoleColor -R $cell.ForegroundRGB[0] -G $cell.ForegroundRGB[1] -B $cell.ForegroundRGB[2]
+            }
+
+            if ($null -ne $cell.BackgroundRGB) {
+                $writeHostParams['BackgroundColor'] = ConvertTo-ConsoleColor -R $cell.BackgroundRGB[0] -G $cell.BackgroundRGB[1] -B $cell.BackgroundRGB[2]
+            }
+
+            Write-Host @writeHostParams
         }
         Write-Host ''
     }

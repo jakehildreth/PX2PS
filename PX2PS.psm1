@@ -31,6 +31,7 @@ Add-Type -AssemblyName System.IO.Compression
 
 # Module-scoped constants
 $script:LowerHalfBlock = [char]0x2584
+$script:UpperHalfBlock = [char]0x2580
 $script:ESC = [char]27
 
 # Dot source private functions
