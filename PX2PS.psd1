@@ -1,6 +1,6 @@
 @{
     RootModule = 'PX2PS.psm1'
-    ModuleVersion = '2026.4.120930'
+    ModuleVersion = '2026.4.130730'
     GUID = 'a5b9e8c7-d4f1-4a2b-9c3d-1e2f3a4b5c6d'
     Author = 'Jake Hildreth'
     CompanyName = 'Gilmour Technologies, Ltd'
@@ -16,7 +16,7 @@
             Tags = @('PixelArt', 'Terminal', 'ANSI', 'Graphics', 'Pixquare')
             LicenseUri = 'https://github.com/jakehildreth/PX2PS/blob/main/LICENSE'
             ProjectUri = 'https://github.com/jakehildreth/PX2PS'
-            ReleaseNotes = 'Added OutputMode parameter for ScriptBlock and Script file generation'
+            ReleaseNotes = 'Added ISE Support and -RenderMode [Auto|ConsoleColor|VT]'
         }
     }
 }
