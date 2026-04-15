@@ -13,10 +13,10 @@
     AliasesToExport = @('px2ps')
     PrivateData = @{
         PSData = @{
-            Tags = @('PixelArt', 'Terminal', 'ANSI', 'Graphics', 'Pixquare')
+            Tags = @('PixelArt', 'Terminal', 'ANSI', 'Graphics', 'Pixquare', 'Piskel')
             LicenseUri = 'https://github.com/jakehildreth/PX2PS/blob/main/LICENSE'
             ProjectUri = 'https://github.com/jakehildreth/PX2PS'
-            ReleaseNotes = 'Added binary transparency support.'
+            ReleaseNotes = 'Added .piskel format support.'
         }
     }
 }
