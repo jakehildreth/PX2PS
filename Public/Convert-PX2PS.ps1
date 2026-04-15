@@ -2,20 +2,23 @@ function Convert-PX2PS {
     [alias('px2ps')] 
     <#
     .SYNOPSIS
-        Converts Pixquare .px files to terminal pixel graphics.
+        Converts Pixquare .px and Piskel .piskel files to terminal pixel graphics.
     
     .DESCRIPTION
-        Reads .px pixel art files and renders them in the PowerShell terminal
-        using the lower half block character (▄) with ANSI True Color.
+        Reads .px and .piskel pixel art files and renders them in the PowerShell
+        terminal using the lower half block character (▄) with ANSI True Color.
         Each line of output represents two rows of pixels: top pixel uses
         background color, bottom pixel uses foreground color.
         
-        Supports both single-layer and multi-layer .px files with automatic
+        Supports both single-layer and multi-layer files with automatic
         layer compositing and transparency handling.
+        
+        For .piskel files, only the first frame of each layer is used
+        (animation is not supported).
     
     .PARAMETER Path
-        Path to a .px file or directory containing .px files.
-        If a directory is provided, all .px files in that directory are processed.
+        Path to a .px or .piskel file, or a directory containing such files.
+        If a directory is provided, all .px and .piskel files are processed.
     
     .PARAMETER OutputMode
         Controls the output format:
@@ -118,7 +121,7 @@ function Convert-PX2PS {
     )
     
     begin {
-        Write-Verbose 'Starting .px file processing'
+        Write-Verbose 'Starting pixel art file processing'
     }
     
     process {
@@ -136,14 +139,14 @@ function Convert-PX2PS {
         $pathItem = Get-Item -Path $Path
         
         if ($pathItem.PSIsContainer) {
-            $pxFiles = Get-ChildItem -Path $Path -Filter '*.px' -File
+            $pxFiles = Get-ChildItem -Path $Path -File | Where-Object { $_.Extension -in '.px', '.piskel' }
             
             if ($pxFiles.Count -eq 0) {
-                Write-Warning "No .px files found in $Path"
+                Write-Warning "No .px or .piskel files found in $Path"
                 return
             }
             
-            Write-Host "Found $($pxFiles.Count) .px file(s)" -ForegroundColor Green
+            Write-Host "Found $($pxFiles.Count) pixel art file(s)" -ForegroundColor Green
             
             foreach ($file in $pxFiles) {
                 $params = @{
@@ -174,24 +177,39 @@ function Convert-PX2PS {
             return
         }
         
-        if ($pathItem.Extension -ne '.px') {
-            Write-Warning "File does not appear to be a .px file: $Path"
+        if ($pathItem.Extension -notin '.px', '.piskel') {
+            Write-Warning "File does not appear to be a supported pixel art file: $Path"
         }
         
         try {
-            $data = [System.IO.File]::ReadAllBytes($pathItem.FullName)
-            $dimensions = Get-PxDimension -Data $data
-            $width = $dimensions.Width
-            $height = $dimensions.Height
-            
-            if ($width -le 0 -or $height -le 0) {
-                Write-Warning "Invalid dimensions in $($pathItem.Name)"
-                return
+            if ($pathItem.Extension -eq '.piskel') {
+                $json = Get-Content -Path $pathItem.FullName -Raw | ConvertFrom-Json
+                $width = [int]$json.piskel.width
+                $height = [int]$json.piskel.height
+
+                if ($width -le 0 -or $height -le 0) {
+                    Write-Warning "Invalid dimensions in $($pathItem.Name)"
+                    return
+                }
+
+                Write-Verbose "Processing $($pathItem.Name): ${width}x${height}"
+
+                $layers = Read-PiskelLayerData -PiskelData $json -Width $width -Height $height
+            } else {
+                $data = [System.IO.File]::ReadAllBytes($pathItem.FullName)
+                $dimensions = Get-PxDimension -Data $data
+                $width = $dimensions.Width
+                $height = $dimensions.Height
+
+                if ($width -le 0 -or $height -le 0) {
+                    Write-Warning "Invalid dimensions in $($pathItem.Name)"
+                    return
+                }
+
+                Write-Verbose "Processing $($pathItem.Name): ${width}x${height}"
+
+                $layers = Read-PxLayerData -Data $data -Width $width -Height $height
             }
-            
-            Write-Verbose "Processing $($pathItem.Name): ${width}x${height}"
-            
-            $layers = Read-PxLayerData -Data $data -Width $width -Height $height
             
             if ($layers.Count -eq 0) {
                 Write-Warning "Could not extract layer data from $($pathItem.Name)"
@@ -550,6 +568,6 @@ if ($useConsoleColorExprScript) {
     }
     
     end {
-        Write-Verbose 'Completed .px file processing'
+        Write-Verbose 'Completed pixel art file processing'
     }
 }
