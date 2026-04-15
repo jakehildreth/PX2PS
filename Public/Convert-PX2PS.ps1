@@ -139,10 +139,10 @@ function Convert-PX2PS {
         $pathItem = Get-Item -Path $Path
         
         if ($pathItem.PSIsContainer) {
-            $pxFiles = Get-ChildItem -Path $Path -File | Where-Object { $_.Extension -in '.px', '.piskel' }
+            $pxFiles = Get-ChildItem -Path $Path -File | Where-Object { $_.Extension -in '.px', '.piskel', '.ase', '.aseprite' }
             
             if ($pxFiles.Count -eq 0) {
-                Write-Warning "No .px or .piskel files found in $Path"
+                Write-Warning "No .px, .piskel, .ase, or .aseprite files found in $Path"
                 return
             }
             
@@ -177,7 +177,7 @@ function Convert-PX2PS {
             return
         }
         
-        if ($pathItem.Extension -notin '.px', '.piskel') {
+        if ($pathItem.Extension -notin '.px', '.piskel', '.ase', '.aseprite') {
             Write-Warning "File does not appear to be a supported pixel art file: $Path"
         }
         
@@ -195,6 +195,20 @@ function Convert-PX2PS {
                 Write-Verbose "Processing $($pathItem.Name): ${width}x${height}"
 
                 $layers = Read-PiskelLayerData -PiskelData $json -Width $width -Height $height
+            } elseif ($pathItem.Extension -in '.ase', '.aseprite') {
+                $data = [System.IO.File]::ReadAllBytes($pathItem.FullName)
+                $dimensions = Get-AseDimension -Data $data
+                $width = $dimensions.Width
+                $height = $dimensions.Height
+
+                if ($width -le 0 -or $height -le 0) {
+                    Write-Warning "Invalid dimensions in $($pathItem.Name)"
+                    return
+                }
+
+                Write-Verbose "Processing $($pathItem.Name): ${width}x${height}"
+
+                $layers = Read-AseLayerData -Data $data -Width $width -Height $height
             } else {
                 $data = [System.IO.File]::ReadAllBytes($pathItem.FullName)
                 $dimensions = Get-PxDimension -Data $data
