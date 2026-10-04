@@ -1,0 +1,64 @@
+name: Build and Publish to PSGallery and GitHub
+
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'Public/**'
+      - 'Private/**'
+      - 'Build/**'
+      - 'Tests/**'
+      - 'PX2PS.psm1'
+      - 'PX2PS.psd1'
+      - 'PX2PS.png'
+      - 'LICENSE'
+      - '.github/workflows/publish.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: px2ps-publish
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install build and test modules
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Install-Module -Name Pester -RequiredVersion 6.1.0 -AllowClobber -Scope CurrentUser -Force
+          Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
+          Install-Module -Name PSPublishModule -RequiredVersion 2.0.27 -AllowClobber -Scope CurrentUser -Force
+
+      - name: Run Pester tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Import-Module Pester -RequiredVersion 6.1.0
+          Invoke-Pester -Path ./Tests -CI -Output Detailed
+
+      - name: Build and Publish (Release)
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./Build/Build-Module.ps1 -PublishToPSGallery -PublishToGitHub
+
+      - name: Build and Publish (Prerelease)
+        if: github.ref != 'refs/heads/main'
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./Build/Build-Module.ps1 -PublishToPSGallery -PublishToGitHub -Prerelease pre
