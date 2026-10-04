@@ -66,6 +66,34 @@ PX2PS reads Pixquare .px files, decompresses the zlib-encoded layer data, compos
 
 In terminals that do not support ANSI sequences (e.g., PowerShell ISE), pixels are written using ConsoleColor instead of ANSI.
 
+### Local Build
+
+Use PowerShell 7.4 or later for builds and tests:
+
+```powershell
+Install-Module PSPublishModule -RequiredVersion 2.0.27 -Scope CurrentUser -AllowClobber
+Install-Module Pester -RequiredVersion 6.1.0 -Scope CurrentUser -AllowClobber
+
+Import-Module Pester -RequiredVersion 6.1.0
+Invoke-Pester -Path ./Tests -CI
+
+# Build only. Nothing is published.
+pwsh -NoProfile -File ./Build/Build-Module.ps1
+
+# Build a specific prerelease version.
+pwsh -NoProfile -File ./Build/Build-Module.ps1 -CalVer 2026.10.41234 -Prerelease pre
+```
+
+The package is written to `Artefacts/Unpacked/PX2PS`. Each build uses an isolated working directory. It does not replace an installed copy of PX2PS.
+
+To publish locally, set `PSGALLERY_API_KEY`, `GITHUB_TOKEN`, and `GITHUB_SHA` in your environment, then run:
+
+```powershell
+pwsh -NoProfile -File ./Build/Build-Module.ps1 -PublishToPSGallery -PublishToGitHub
+```
+
+Use a new CalVer for each publication. Rerunning a release with an existing version fails rather than replacing it.
+
 ## License
 
 MIT License w/Commons Clause - see [LICENSE](LICENSE) file for details.
